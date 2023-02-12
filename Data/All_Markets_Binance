@@ -1,0 +1,76 @@
+# Historical Data from Binance
+
+import pandas as pd
+from binance.client import Client
+import datetime as DT
+import symbols.symbols 
+
+api_key = ""    # Enter your own API-key here
+api_secret = "" # Enter your own API-secret here
+
+bclient = Client(
+    api_key=api_key,
+    api_secret=api_secret
+)
+
+today = DT.datetime.today()
+start_date = today - DT.timedelta(days=180)
+
+def binanceBarExtractor(symbol):
+    klines = bclient.get_historical_klines(
+        symbol,
+        Client.KLINE_INTERVAL_1MINUTE,
+        start_date.strftime("%d %b %Y %H:%M:%S"),
+        today.strftime("%d %b %Y %H:%M:%S"),
+        1000
+    )
+    
+    data = pd.DataFrame(
+        klines,
+        columns = ['timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time', 'quote_av', 'trades', 'tb_base_av', 'tb_quote_av', 'ignore' ]
+    )
+    
+    data['timestamp'] = pd.to_datetime(
+        data['timestamp'],
+        unit='ms'
+    )
+
+    data.set_index(
+        'timestamp',
+        inplace=True
+    )
+        
+    return data
+
+
+#STRING PROCESSING
+
+symbols = np.loadtxt("symbols.txt", dtype = 'str' ,delimiter=',')
+
+for i in range(len(symbols)):
+    symbols[i] = symbols[i].strip().replace("'", "")
+
+flipped_symbols = {tuple(symbol.split("_")[::-1]) for symbol in symbols}
+flipped_symbols = { "".join(symbol) for symbol in flipped_symbols}
+symbols = {symbol: None for symbol in flipped_symbols}
+
+
+#GET DATA
+
+def get_data():
+    symbols
+    
+    for symbol in symbols:
+        data = binanceBarExtractor(symbol)[['close']].astype(float)
+        data['symbol'] = symbol
+        symbols[symbol] = data
+
+    all_together = pd.concat(
+        [symbols[symbol] for symbol in symbols.keys()]
+    ).sort_values('symbol').sort_index()
+    
+    return all_together
+
+
+data = get_data()
+piv = data.pivot(columns='symbol'
